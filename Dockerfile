@@ -14,7 +14,8 @@ RUN rm -rf /usr/share/nginx/html/*
 
 COPY --from=builder /app/dist/memecity/browser /usr/share/nginx/html
 
-RUN echo 'server { \
+RUN mkdir -p /etc/nginx/templates && \
+    echo 'server { \
     listen ${PORT}; \
     location / { \
         root /usr/share/nginx/html; \
