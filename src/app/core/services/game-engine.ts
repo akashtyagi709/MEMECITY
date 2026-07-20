@@ -158,20 +158,68 @@ private loadCharacterModel(): void {
 }
 
 private setupInputController(): void {
+  // 1. Desktop Keyboard Listeners
   window.addEventListener('keydown', this.keydownHandler);
   window.addEventListener('keyup', this.keyupHandler);
 
+  // 2. Mobile Virtual Joystick Setup (Babylon.js built-in)
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  let joystick: any = null;
+
+  if (isMobile) {
+    // Babylon ka VirtualJoystick import ya global use hota hai agar loaded ho, 
+    // ya hum standard pointer events se ek simple virtual stick simulate kar sakte hain.
+    // Sabse reliable aur lightweight tareeqa screen touch delta ka hai jo proper joystick jaisa kaam kare:
+    let pointerDown = false;
+    let startX = 0;
+    let startY = 0;
+
+    window.addEventListener('pointerdown', (e) => {
+      // Agar screen ke left side mein touch kiya toh joystick ki tarah treat karo
+      if (e.clientX < window.innerWidth / 2) {
+        pointerDown = true;
+        startX = e.clientX;
+        startY = e.clientY;
+      } else {
+        // Right side touch par 'E' key (Interaction/Emote) trigger karo
+        this.inputMap['e'] = true;
+        setTimeout(() => { this.inputMap['e'] = false; }, 100);
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!pointerDown) return;
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      this.inputMap['w'] = deltaY < -15;
+      this.inputMap['s'] = deltaY > 15;
+      this.inputMap['a'] = deltaX < -15;
+      this.inputMap['d'] = deltaX > 15;
+    });
+
+    window.addEventListener('pointerup', () => {
+      pointerDown = false;
+      this.inputMap['w'] = false;
+      this.inputMap['s'] = false;
+      this.inputMap['a'] = false;
+      this.inputMap['d'] = false;
+    });
+  }
+
+  // 3. Main Render & Movement Loop
   this.scene.onBeforeRenderObservable.add(() => {
     if (this.isEmoting) return;
 
-    // --- 1. INTERACTION LOGIC (Billboard Sound) ---
+    // --- INTERACTION LOGIC ---
     if (this.inputMap['e'] && this.currentActiveButton) {
-      this.inputMap['e'] = false; // Spamming roko
+      this.inputMap['e'] = false; 
       this.playInteractionSound(this.currentActiveButton.metadata.soundFile);
-      return; // Sound baji toh emote/move nahi hona chahiye
+      return; 
     }
     
-    // --- 2. EMOTE LOGIC ---
+    // --- EMOTE LOGIC ---
     if (this.inputMap['e'] && this.emoteAnim && !this.isWalking) {
       this.isEmoting = true; 
       this.inputMap['e'] = false;
@@ -185,7 +233,7 @@ private setupInputController(): void {
       return;
     }
 
-    // --- 3. MOVEMENT INPUTS ---
+    // --- MOVEMENT INPUTS ---
     let moveX = 0; 
     let moveZ = 0;
     
@@ -194,7 +242,7 @@ private setupInputController(): void {
     if (this.inputMap['a'] || this.inputMap['arrowleft']) moveX = -1;
     if (this.inputMap['d'] || this.inputMap['arrowright']) moveX = 1;
 
-    // --- 4. MOVEMENT EXECUTION & ANIMATION ---
+    // --- MOVEMENT EXECUTION & ANIMATION ---
     if (moveX !== 0 || moveZ !== 0) {
       const direction = new Vector3(moveX, 0, moveZ).normalize();
       this.playerRoot.moveWithCollisions(direction.scale(this.moveSpeed));
