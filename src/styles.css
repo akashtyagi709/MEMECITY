@@ -1,0 +1,9 @@
+/* Browser ki default margins aur padding khatam karne ke liye */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Kisi bhi tarah ka scroller block karne ke liye */
+  background-color: #020204;
+}
