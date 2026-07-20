@@ -157,53 +157,63 @@ private loadCharacterModel(): void {
   });
 }
 
- private setupInputController(): void {
+private setupInputController(): void {
   window.addEventListener('keydown', this.keydownHandler);
   window.addEventListener('keyup', this.keyupHandler);
 
   this.scene.onBeforeRenderObservable.add(() => {
     if (this.isEmoting) return;
+
+    // --- 1. INTERACTION LOGIC (Billboard Sound) ---
     if (this.inputMap['e'] && this.currentActiveButton) {
-        this.inputMap['e'] = false; // Spamming roko
-        this.playInteractionSound(this.currentActiveButton.metadata.soundFile);
-        return; // Sound baji toh emote/move nahi hona chahiye
+      this.inputMap['e'] = false; // Spamming roko
+      this.playInteractionSound(this.currentActiveButton.metadata.soundFile);
+      return; // Sound baji toh emote/move nahi hona chahiye
     }
     
-    let moveX = 0; let moveZ = 0;
-    
-    // --- EMOTE LOGIC ---
+    // --- 2. EMOTE LOGIC ---
     if (this.inputMap['e'] && this.emoteAnim && !this.isWalking) {
-      this.isEmoting = true; this.inputMap['e'] = false;
-      this.idleAnim?.stop(); this.emoteAnim.start(false, 1.2);
+      this.isEmoting = true; 
+      this.inputMap['e'] = false;
+      this.idleAnim?.stop(); 
+      this.emoteAnim.start(false, 1.2);
+      
       this.emoteAnim.onAnimationEndObservable.addOnce(() => {
-        this.isEmoting = false; this.idleAnim?.start(true, 1.0);
+        this.isEmoting = false; 
+        this.idleAnim?.start(true, 1.0);
       });
       return;
     }
 
-    // --- MOVEMENT ---
+    // --- 3. MOVEMENT INPUTS ---
+    let moveX = 0; 
+    let moveZ = 0;
+    
     if (this.inputMap['w'] || this.inputMap['arrowup']) moveZ = 1;
     if (this.inputMap['s'] || this.inputMap['arrowdown']) moveZ = -1;
     if (this.inputMap['a'] || this.inputMap['arrowleft']) moveX = -1;
     if (this.inputMap['d'] || this.inputMap['arrowright']) moveX = 1;
 
+    // --- 4. MOVEMENT EXECUTION & ANIMATION ---
     if (moveX !== 0 || moveZ !== 0) {
-  // 1. Move character
-  const direction = new Vector3(moveX, 0, moveZ).normalize();
-  this.playerRoot.moveWithCollisions(direction.scale(this.moveSpeed));
+      const direction = new Vector3(moveX, 0, moveZ).normalize();
+      this.playerRoot.moveWithCollisions(direction.scale(this.moveSpeed));
 
-  // 2. ROTATION FIX (Shortest path rotate)
-  const targetAngle = Math.atan2(moveX, moveZ);
-  
-  // Is line ko update karo (Rotation speed 0.2 se 0.3 kar di hai fast response ke liye)
-this.playerRoot.rotation.y = targetAngle + Math.PI;  
-  // 3. Animation
-  if (!this.isWalking) {
-    this.isWalking = true;
-    this.idleAnim?.stop();
-    this.walkAnim?.start(true, 1.0);
-  }
-}
+      const targetAngle = Math.atan2(moveX, moveZ);
+      this.playerRoot.rotation.y = targetAngle + Math.PI;  
+
+      if (!this.isWalking) {
+        this.isWalking = true;
+        this.idleAnim?.stop();
+        this.walkAnim?.start(true, 1.0);
+      }
+    } else {
+      if (this.isWalking) {
+        this.isWalking = false;
+        this.walkAnim?.stop();
+        this.idleAnim?.start(true, 1.0);
+      }
+    }
   });
 }
 
